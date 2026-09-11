@@ -39,3 +39,17 @@ def test_warmup_does_not_raise(predictor):
 def test_missing_model_directory_raises(tmp_path):
     with pytest.raises(ModelNotFoundError):
         Predictor(model_dir=tmp_path / "nope")
+
+
+def test_unsupported_variant_raises():
+    with pytest.raises(ValueError, match="unsupported variant"):
+        Predictor(variant="onnx-int8")
+
+
+def test_quantized_variant_loads_and_predicts():
+    predictor_quantized = Predictor(variant="onnx_quantized")
+    result = predictor_quantized.predict(LAUDO)
+    assert result.category_id in {1, 2, 3, 4, 5}
+    assert result.priority in {"URGENTE", "ATENCAO", "NORMAL"}
+    assert 0.0 <= result.confidence <= 1.0
+    assert result.inference_seconds > 0

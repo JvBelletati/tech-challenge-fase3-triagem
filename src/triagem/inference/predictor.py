@@ -38,6 +38,10 @@ class Predictor:
     """Loads an ONNX model once and reuses the session for every request."""
 
     def __init__(self, model_dir: Path = CURRENT_MODEL_DIR, variant: str = "onnx") -> None:
+        if variant not in ("onnx", "onnx_quantized"):
+            raise ValueError(
+                f"unsupported variant '{variant}'. accepted values: 'onnx', 'onnx_quantized'"
+            )
         self._model_dir = Path(model_dir)
         filename = (
             MODEL_FILES["onnx_quantized"] if variant == "onnx_quantized" else MODEL_FILES["onnx"]
@@ -80,7 +84,8 @@ class Predictor:
         elapsed = time.perf_counter() - started
 
         category_id = int(np.ravel(label_output)[0])
-        confidence = float(np.max(np.asarray(probability_output)))
+        probabilities = np.asarray(probability_output)[0]
+        confidence = float(probabilities.max())
         category = LABEL_NAMES[category_id]
         priority, needs_review = assign_priority(category, confidence)
 
