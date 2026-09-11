@@ -1,0 +1,98 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  PYTHON_VERSION: "3.12"
+
+jobs:
+  lint:
+    name: Lint (Ruff)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Install Ruff
+        run: pip install ruff==0.16.7
+      - name: Check lint rules
+        run: ruff check .
+      - name: Check formatting
+        run: ruff format --check .
+
+  test:
+    name: Tests (pytest)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+      - name: Install project
+        run: pip install -e ".[training,dev]"
+      - name: Run test suite
+        run: pytest --cov=triagem --cov-report=term-missing
+
+  build:
+    name: Docker build + smoke test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build image
+        run: docker build -t triagem-api:ci .
+      - name: Start container
+        run: docker run -d --name triagem-ci -p 8000:8000 triagem-api:ci
+      - name: Wait for health
+        run: |
+          for i in $(seq 1 30); do
+            if curl -fs http://localhost:8000/health; then exit 0; fi
+            sleep 2
+          done
+          echo "API nao respondeu a tempo"
+          docker logs triagem-ci
+          exit 1
+      - name: Smoke test a real prediction
+        run: |
+          curl -fs -X POST http://localhost:8000/predict \
+            -H 'Content-Type: application/json' \
+            -d '{"texto":"The patient presented with acute chest pain radiating to the left arm with dyspnea."}' \
+            | tee /dev/stderr | grep -q prioridade
+      - name: Container logs on failure
+        if: failure()
+        run: docker logs triagem-ci
+
+  validate-dag:
+    name: Airflow DAG import check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+      - name: Install Airflow with official constraints
+        run: |
+          pip install "apache-airflow==3.3.1" \
+            --constraint "https://raw.githubusercontent.com/apache/airflow/constraints-3.3.1/constraints-${{ env.PYTHON_VERSION }}.txt"
+          pip install -e .
+      - name: Import the DAG
+        env:
+          AIRFLOW__CORE__DAGS_FOLDER: ${{ github.workspace }}/airflow/dags
+          AIRFLOW__CORE__LOAD_EXAMPLES: "False"
+        run: |
+          python - <<'PY'
+          from airflow.models import DagBag
+          bag = DagBag("airflow/dags", include_examples=False)
+          if bag.import_errors:
+              for path, error in bag.import_errors.items():
+                  print(f"ERRO em {path}:\n{error}")
+              raise SystemExit(1)
+          print("DAGs carregadas:", sorted(bag.dag_ids))
+          assert "retreino_triagem" in bag.dag_ids
+          PY
