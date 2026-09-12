@@ -108,7 +108,9 @@ def retreino_triagem():
 
         CURRENT_MODEL_DIR.mkdir(parents=True, exist_ok=True)
         for filename in MODEL_FILES.values():
-            shutil.copy2(CANDIDATES_DIR / filename, CURRENT_MODEL_DIR / filename)
+            # Use copy, not copy2: copystat rejects Docker bind mounts. metadata.json
+            # already carries version/trained_at, which is sufficient provenance.
+            shutil.copy(CANDIDATES_DIR / filename, CURRENT_MODEL_DIR / filename)
 
         logger.info("promoted model %s", version)
         return version
