@@ -73,9 +73,12 @@ def main() -> int:
 
     CURRENT_MODEL_DIR.mkdir(parents=True, exist_ok=True)
     for filename in MODEL_FILES.values():
-        # Use copy, not copy2: copystat rejects Docker bind mounts. metadata.json
-        # already carries version/trained_at, which is sufficient provenance.
-        shutil.copy(CANDIDATES_DIR / filename, CURRENT_MODEL_DIR / filename)
+        # copyfile, not copy/copy2: both of those also chmod the destination, and
+        # chmod requires owning the file. Under a bind mount the artifacts belong
+        # to uid 0 while the process runs as uid 50000, so the write succeeds and
+        # the chmod raises EPERM. Only the bytes matter here -- metadata.json
+        # already carries version and trained_at as provenance.
+        shutil.copyfile(CANDIDATES_DIR / filename, CURRENT_MODEL_DIR / filename)
     logger.info("promoted model version %s to %s", metadata["version"], CURRENT_MODEL_DIR)
     return 0
 
