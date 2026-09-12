@@ -1,8 +1,23 @@
 """Weekly retraining pipeline for the triage model.
 
-This DAG deliberately contains no business logic. Every task is a thin call
-into triagem.training.*, which means the pipeline is fully testable with
-pytest without ever starting Airflow.
+This DAG orchestrates the training pipeline implemented in
+triagem.training.* (ingest, train, evaluate, export): ingerir_dados,
+validar_dados, treinar_modelo, avaliar_modelo and exportar_onnx are each a
+thin call into that package, which is exactly what makes the pipeline
+itself unit-tested with pytest without ever starting Airflow (see
+tests/test_ingest.py, tests/test_train.py, tests/test_evaluate.py and
+tests/test_export.py).
+
+promover_modelo and rejeitar_candidato are the exception: promoting or
+rejecting a candidate is orchestration-specific (building metadata.json,
+copying artifacts into models/current/, deciding whether to skip), so that
+logic lives inline in these two tasks rather than in triagem.training.*.
+The wiring between tasks, the AirflowSkipException short-circuit in
+exportar_onnx, and rejeitar_candidato's trigger_rule="all_done" branch are
+therefore not testable by pytest alone - tests/test_dag.py covers what it
+can without a scheduler (import, task set, dependency order, catchup) via
+DagBag, but the actual skip-propagation behaviour is only exercised by
+running the DAG inside Airflow itself.
 """
 
 from __future__ import annotations

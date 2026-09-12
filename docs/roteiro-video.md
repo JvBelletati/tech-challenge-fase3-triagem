@@ -64,15 +64,21 @@ Fazer **antes** de apertar "gravar", nesta ordem:
 
 > **⚠️ AVISO — use o texto exato, não parafraseie:** o exemplo do laudo
 > cardiovascular só funciona se for **colado literalmente**, não digitado de
-> memória nem resumido. O texto completo abaixo mede confiança **0,3993**
-> (abaixo do limiar de 0,40) e por isso escala para `ATENCAO` com
-> `revisao_humana: true` — é o momento mais importante do vídeo. Uma versão
-> encurtada testada nesta verificação ("...with dyspnea and ST elevation on
-> the electrocardiogram", sem a frase completa) mediu confiança **0,4688**,
-> **acima** do limiar, e por isso **não** escala — a demonstração perderia o
-> efeito. Copie e cole exatamente:
+> memória nem resumido, nem trocado pela variante mais longa que aparece em
+> `scripts/gerar_carga.py`. O texto abaixo foi medido diretamente contra o
+> `Predictor` nesta verificação e mede confiança **0,3993** (abaixo do
+> limiar de 0,40), classificado como `general pathological conditions`, e
+> por isso escala para `ATENCAO` com `revisao_humana: true` — é o momento
+> mais importante do vídeo. Como contraste medido (não suposto): a variante
+> longa de `scripts/gerar_carga.py`, que descreve o mesmo quadro clínico com
+> mais detalhe ("...Electrocardiogram showed ST segment elevation in the
+> anterior leads consistent with acute myocardial infarction"), mede
+> confiança **0,4548**, é classificada como `cardiovascular diseases` e sai
+> como `URGENTE` com `revisao_humana: false` — **não** escala. As duas
+> variantes descrevem o mesmo caso, mas só a de baixo produz o efeito de
+> segurança que este bloco demonstra. Copie e cole exatamente:
 > ```
-> The patient presented with acute chest pain radiating to the left arm, accompanied by dyspnea and diaphoresis. Electrocardiogram showed ST segment elevation in the anterior leads consistent with acute myocardial infarction.
+> The patient presented with acute chest pain radiating to the left arm, accompanied by dyspnea and diaphoresis. ECG showed ST elevation.
 > ```
 
 ---
@@ -146,7 +152,7 @@ Soma: 15 + 35 + 25 + 35 + 20 = **130s = 2:10** ✓
   ```bash
   curl -s -X POST http://localhost:8000/predict \
     -H "Content-Type: application/json" \
-    -d '{"texto":"The patient presented with acute chest pain radiating to the left arm, accompanied by dyspnea and diaphoresis. Electrocardiogram showed ST segment elevation in the anterior leads consistent with acute myocardial infarction."}'
+    -d '{"texto":"The patient presented with acute chest pain radiating to the left arm, accompanied by dyspnea and diaphoresis. ECG showed ST elevation."}'
   ```
 - Apontar (sem ler em voz alta o JSON inteiro) os campos `prioridade` e
   `revisao_humana` na resposta.
@@ -193,7 +199,7 @@ cortadas. Se algo tiver que ceder tempo no dia da gravação, ceda no Action
 
 | # | Sub-segmento | Janela | Duração |
 |---|---|---|---|
-| 1 | Número principal (ONNX 3,29x) | 3:30–3:45 | 15s |
+| 1 | Número principal (ONNX ~3,3x) | 3:30–3:45 | 15s |
 | 2 | Lição 1 — quantização sem ganho | 3:45–4:10 | 25s |
 | 3 | Lição 2 — unigramas venceram bigramas | 4:10–4:25 | 15s |
 | 4 | Lição 3 — a regra de segurança pegou um erro real | 4:25–4:45 | 20s |
@@ -203,9 +209,9 @@ Soma: 15 + 25 + 15 + 20 = **75s = 1:15** ✓
 ### 1. Número principal — 3:30–3:45 (15s, ~30 palavras)
 
 **Falar:**
-- "ONNX Runtime entrega 3,29 vezes de ganho no p50, de 0,570 para 0,173
+- "ONNX Runtime entrega 3,34 vezes de ganho no p50, de 0,580 para 0,174
   milissegundos, na troca de sklearn puro para ONNX — sem custo de
-  acurácia: F1 praticamente igual, 0,5445 para 0,5427."
+  acurácia: F1 praticamente igual, 0,5589 para 0,5591."
 
 **Mostrar:** tabela comparativa de `docs/benchmarks/comparativo-latencia.md`.
 

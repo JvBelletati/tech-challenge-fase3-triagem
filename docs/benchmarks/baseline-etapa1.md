@@ -47,11 +47,23 @@ $ curl -s http://localhost:8000/health
 {"status":"ok","modelo":{"versao":"20260911-114522","runtime":"onnx"}}
 
 $ curl -s -X POST http://localhost:8000/predict -H "Content-Type: application/json" \
-    -d '{"texto":"The patient presented with acute chest pain radiating to the left arm, ..."}'
+    -d '{"texto":"The patient presented with acute chest pain radiating to the left arm, accompanied by dyspnea and diaphoresis. ECG showed ST elevation."}'
 {"categoria":"general pathological conditions","categoria_id":5,"prioridade":"ATENCAO",
  "confianca":0.3993,"revisao_humana":true,"latencia_ms":0.565,
  "modelo":{"versao":"20260911-114522","runtime":"onnx"}}
 ```
+
+Reverificado nesta tarefa (com o mesmo `models/current/`, versão
+`20260911-114522`, chamando `Predictor.predict()` diretamente em vez do
+container, já que o Docker estava indisponível na máquina): o texto acima
+mede `confianca=0.3993`, `categoria="general pathological conditions"`,
+`prioridade="ATENCAO"`, `revisao_humana=True` — condiz exatamente com a
+resposta documentada. Esta é a **mesma variante curta** do laudo usada em
+`tests/test_api.py`; a variante mais longa de `scripts/gerar_carga.py`
+(com a frase completa sobre o eletrocardiograma) mede `confianca=0.4548`,
+`categoria="cardiovascular diseases"`, `prioridade="URGENTE"`,
+`revisao_humana=False` — **não** aciona a regra de segurança. As duas não
+são intercambiáveis nos exemplos deste projeto.
 
 ## Resultado da medição
 
