@@ -107,6 +107,11 @@ jobs:
           print("DAGs carregadas:", sorted(bag.dag_ids))
           assert "retreino_triagem" in bag.dag_ids
           PY
+      - name: Initialize the Airflow metadata database
+        # DagBag.get_dag() (used by tests/test_dag.py) looks the DAG up in the
+        # "dag" table via DagModel.get_current(), so the metadata DB must be
+        # migrated first or that query fails with "no such table: dag".
+        run: airflow db migrate
       - name: Run DAG-structure tests
         env:
           AIRFLOW__CORE__DAGS_FOLDER: ${{ github.workspace }}/airflow/dags
