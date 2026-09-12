@@ -12,3 +12,7 @@ airflow/plugins/
 *.egg-info/
 .env
 .superpowers/
+
+# Material do enunciado e documentacao de processo: nao sao entregaveis
+MLET - Tech Challenge Fase 3.pdf
+docs/superpowers/
