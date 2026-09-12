@@ -141,6 +141,16 @@ python scripts/gerar_carga.py
 
 Esse script usa só a biblioteca padrão do Python — não exige instalar as dependências do projeto.
 
+> **Se o Grafana mostrar "No data" em todos os painéis, isso é esperado e não é
+> defeito de configuração.** O `prometheus_client` só cria uma série temporal
+> depois da primeira chamada a `.labels(...)`: enquanto a API não atender nenhuma
+> requisição, `triagem_requests_total` simplesmente não existe — não existe
+> zerado, não existe de todo. Como os contadores vivem na memória do processo,
+> todo `docker compose restart api` recomeça do nada. Gere carga e os sete
+> painéis se populam em segundos. Para conferir de que lado está o problema:
+> `curl -s http://localhost:9090/api/v1/targets` deve trazer o alvo `triagem-api`
+> com `"health":"up"` mesmo sem tráfego nenhum.
+
 Para subir também o Airflow e ver a DAG de retreino, primeiro crie o `.env`
 e os diretórios que o Compose monta (`data/` e `airflow/logs/` são
 ignorados pelo git, e se o Docker os criar sozinho eles ficam com dono
