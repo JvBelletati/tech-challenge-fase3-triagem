@@ -142,7 +142,7 @@ docker compose --profile airflow up -d
 
 Airflow fica disponível em http://localhost:8080, sem tela de login: `AIRFLOW__CORE__SIMPLE_AUTH_MANAGER_ALL_ADMINS=true` (já configurado no `docker-compose.yml`) dá acesso direto de administrador, no mesmo espírito do acesso anônimo do Grafana.
 
-**Nota:** `docker compose down` (sem `--profile airflow`) não para os serviços do profile `airflow` caso estejam no ar — se for necessário liberar as portas 8080/5432, use `docker compose --profile airflow down`.
+**Nota:** `docker compose down` (sem `--profile airflow`) não para os serviços do profile `airflow` caso estejam no ar — se for necessário liberar a porta 8080, use `docker compose --profile airflow down`. (O Postgres do Airflow não expõe porta nenhuma ao host — roda só na rede interna do Compose, então não há conflito de porta 5432 a liberar.)
 
 Exemplo real de chamada ao endpoint principal (resposta colada de uma execução real desta stack):
 
