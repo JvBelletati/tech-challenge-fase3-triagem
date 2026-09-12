@@ -2,6 +2,13 @@
 
 Serviço de Machine Learning que classifica laudos médicos em texto livre e devolve uma prioridade clínica de triagem (URGENTE / ATENCAO / NORMAL), servido por uma API ONNX com observabilidade Prometheus/Grafana e retreino automatizado via Airflow.
 
+## Vídeo de entrega (STAR, 5 min)
+
+**Link:** _a preencher após a gravação_
+
+O roteiro cronometrado, com os quatro blocos STAR e os comandos exatos a executar
+na tela, está em [`docs/roteiro-video.md`](docs/roteiro-video.md).
+
 ## O problema
 
 Um hospital de referência recebe um volume alto de laudos em texto livre e processa a fila por ordem de chegada. Isso significa que um laudo com achado cardiovascular crítico pode esperar atrás de dezenas de laudos de rotina, simplesmente porque chegou depois. O objetivo deste sistema é classificar automaticamente cada laudo e atribuir uma prioridade de triagem, permitindo reordenar a fila por urgência clínica em vez de por ordem de chegada. O foco avaliativo do projeto não é a acurácia do modelo — é o ciclo de vida dele em produção: CI/CD, orquestração de retreino, observabilidade e latência.
@@ -273,6 +280,8 @@ tests/
   fixtures/                       # recorte pequeno do dataset, sem dependencia de rede
 docs/
   benchmarks/                     # relatorios medidos (baseline Etapa 1, comparativo Etapa 4)
+  roteiro-video.md                # roteiro STAR cronometrado para o video de entrega
+  guia-airflow.md                 # guia de operacao do Airflow (subir, disparar, depurar)
 docker-compose.yml                # api + prometheus + grafana (default) e airflow via profile
 Dockerfile                        # imagem de inferencia, sem dependencias de treino
 pyproject.toml
