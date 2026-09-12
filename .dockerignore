@@ -1,0 +1,11 @@
+.venv/
+.git/
+data/
+models/candidates/
+tests/
+docs/
+airflow/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
