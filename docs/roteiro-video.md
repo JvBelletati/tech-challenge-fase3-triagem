@@ -1,13 +1,25 @@
 # Roteiro do vídeo — método STAR (cronometrado, máximo 5:00)
 
 Roteiro de trabalho: cada bloco traz a janela de tempo, os pontos a falar
-(não é texto para decorar palavra por palavra) e o que mostrar na tela.
-Fale naturalmente a partir dos pontos — o cronômetro é o limite duro, não a
-meta.
+(não é texto para decorar palavra por palavra) e o que mostrar na tela. Os
+sub-tempos de cada bloco **somam exatamente** a duração do bloco — isso é
+verificado abaixo, bloco a bloco, para não estourar em silêncio. A
+contagem de palavras usa 140 palavras/minuto como referência de fala
+natural (é uma referência, não uma meta a maximizar — ficar abaixo do
+número de palavras é seguro; ultrapassá-lo é o risco).
 
 ---
 
 ## Checklist de pré-gravação
+
+**Pré-requisito para o sub-segmento do GitHub Actions:** o repositório
+precisa estar **publicado no GitHub** e o CI precisa ter terminado **verde**
+antes desta checklist se aplicar a esse item. Publicar é decisão do
+usuário, feita fora desta tarefa. **Se o repositório ainda não estiver
+publicado**, pule o sub-segmento "GitHub Actions verde" do bloco Action
+inteiro (não tente simular) — o bloco Action fica com 25s a menos (105s em
+vez de 130s), o que é seguro (terminar um bloco mais cedo não é problema;
+só estourar é). O restante da checklist não depende de publicação.
 
 Fazer **antes** de apertar "gravar", nesta ordem:
 
@@ -30,8 +42,9 @@ Fazer **antes** de apertar "gravar", nesta ordem:
    usadas:
    - `http://localhost:8000/docs` (Swagger UI)
    - Terminal com o comando `curl -X POST /predict` pronto (só falta apertar
-     Enter)
-   - GitHub → aba Actions do repositório (workflow verde)
+     Enter) — **ver aviso sobre o texto exato abaixo**
+   - GitHub → aba Actions do repositório (workflow verde) — **só abrir esta
+     aba se o pré-requisito acima estiver satisfeito**
    - `http://localhost:8080` (Airflow), já na tela da DAG `retreino_triagem`
    - `http://localhost:3000` (Grafana), já no dashboard "Triagem de Laudos
      Medicos" (UID `triagem-main`), no painel "Latencia do modelo vs.
@@ -47,12 +60,24 @@ Fazer **antes** de apertar "gravar", nesta ordem:
    para o vídeo.
 
 5. Ter à mão, sem precisar procurar: o texto do laudo cardiovascular de
-   exemplo (chest pain + ST elevation, ver bloco Action) e a tabela de
-   latência do Result.
+   exemplo (ver aviso abaixo) e a tabela de latência do Result.
+
+> **⚠️ AVISO — use o texto exato, não parafraseie:** o exemplo do laudo
+> cardiovascular só funciona se for **colado literalmente**, não digitado de
+> memória nem resumido. O texto completo abaixo mede confiança **0,3993**
+> (abaixo do limiar de 0,40) e por isso escala para `ATENCAO` com
+> `revisao_humana: true` — é o momento mais importante do vídeo. Uma versão
+> encurtada testada nesta verificação ("...with dyspnea and ST elevation on
+> the electrocardiogram", sem a frase completa) mediu confiança **0,4688**,
+> **acima** do limiar, e por isso **não** escala — a demonstração perderia o
+> efeito. Copie e cole exatamente:
+> ```
+> The patient presented with acute chest pain radiating to the left arm, accompanied by dyspnea and diaphoresis. Electrocardiogram showed ST segment elevation in the anterior leads consistent with acute myocardial infarction.
+> ```
 
 ---
 
-## Situation — 0:00–0:45
+## Situation — 0:00–0:45 (~85 palavras)
 
 **Falar:**
 - Hoje, laudos médicos são processados por ordem de chegada (FIFO): não há
@@ -70,122 +95,183 @@ código ainda.
 
 ---
 
-## Task — 0:45–1:20
+## Task — 0:45–1:20 (~55 palavras)
 
 **Falar:**
 - Os requisitos desta fase do desafio: API em contêiner, CI/CD automatizado,
   retreino orquestrado, observabilidade e latência otimizada.
-- Enquadrar rapidamente que cada um desses vira uma seção do vídeo daqui a
-  pouco (arquitetura → API/CI/Airflow/Grafana → números de latência).
+- Cada um desses vira uma seção do Action daqui a pouco.
 
 **Mostrar na tela:** tabela de requisitos da fase (os cinco itens acima),
 pode ser o mesmo slide ou uma tabela simples.
 
 ---
 
-## Action — 1:20–3:30 (o bloco mais longo — ritmo importa)
+## Action — 1:20–3:30 (130s — 5 sub-segmentos, somam exatamente 130s)
 
-**Falar (arquitetura, ~20s):**
-- Visão geral rápida: FastAPI serve o modelo em ONNX Runtime; Airflow
-  orquestra o retreino semanal com gate de qualidade; Prometheus/Grafana
-  observam tudo em produção.
+Este é o bloco mais apertado do roteiro: a maior parte do tempo é
+demonstração ao vivo, não narração. A narração é propositalmente leve —
+legenda sobre o que já está na tela, não explicação linha a linha. Se a
+gravação estourar no dia, corte pela ordem de prioridade indicada (1 = corta
+primeiro, 5 = não corta).
 
-**Mostrar: `POST /predict` ao vivo (~40s)**
-- Abrir `http://localhost:8000/docs` por 2 segundos só para situar (Swagger
-  existe), depois ir direto ao terminal.
-- Rodar ao vivo:
+| # | Sub-segmento | Janela | Duração | Prioridade de corte |
+|---|---|---|---|---|
+| 1 | Arquitetura (visão geral) | 1:20–1:35 | 15s | **1 (corta primeiro)** |
+| 2 | `POST /predict` ao vivo | 1:35–2:10 | 35s | **5 (nunca cortar)** |
+| 3 | GitHub Actions verde *(só se publicado)* | 2:10–2:35 | 25s | **2** |
+| 4 | Airflow — DAG e gate | 2:35–3:10 | 35s | **3** |
+| 5 | Grafana com carga | 3:10–3:30 | 20s | **4** |
+
+Soma: 15 + 35 + 25 + 35 + 20 = **130s = 2:10** ✓
+
+### 1. Arquitetura (visão geral) — 1:20–1:35 (15s, corte prioridade 1, ~22 palavras)
+
+**Falar:**
+- "Visão geral: FastAPI serve o modelo em ONNX; Airflow orquestra o retreino
+  semanal com gate de qualidade; Prometheus e Grafana observam tudo em
+  produção."
+
+**Mostrar:** slide ou diagrama da arquitetura (mesmo do README), 15s e corta.
+
+### 2. `POST /predict` ao vivo — 1:35–2:10 (35s, corte prioridade 5 — nunca cortar, ~20 palavras)
+
+**Falar (mínimo — deixar a demonstração falar por si):**
+- "Rodando ao vivo. Guardem este resultado — ele volta com mais peso lá no
+  Result." (ao apontar `prioridade` e `revisao_humana` na resposta)
+
+**Mostrar:**
+- 2s em `http://localhost:8000/docs` só para situar que o Swagger existe.
+- Terminal, rodar (texto exato do aviso da checklist):
   ```bash
   curl -s -X POST http://localhost:8000/predict \
     -H "Content-Type: application/json" \
     -d '{"texto":"The patient presented with acute chest pain radiating to the left arm, accompanied by dyspnea and diaphoresis. Electrocardiogram showed ST segment elevation in the anterior leads consistent with acute myocardial infarction."}'
   ```
-- Apontar no JSON de resposta os campos `prioridade` e `revisao_humana` —
-  esses dois campos são o produto final do sistema, o resto é meio de
-  campo. (Guardar este mesmo exemplo: ele volta com mais peso no Result.)
+- Apontar (sem ler em voz alta o JSON inteiro) os campos `prioridade` e
+  `revisao_humana` na resposta.
 
-**Mostrar: GitHub Actions verde (~30s)**
-- Aba Actions já aberta. Passar pelos 4 jobs do workflow: `lint`, `test`,
-  `build` (build da imagem Docker + smoke test do `/predict`), e
-  `validate-dag` (garante que a DAG do Airflow importa sem erro antes mesmo
-  de rodar).
-
-**Mostrar: Airflow — DAG e gate de promoção (~40s)**
-- `http://localhost:8080`, DAG `retreino_triagem`.
-- Falar as 7 tasks em sequência: `ingerir_dados` → `validar_dados` →
-  `treinar_modelo` → `avaliar_modelo` → e daí o gate: `exportar_onnx` +
-  `promover_modelo` só rodam se o candidato for aprovado; `rejeitar_candidato`
-  é o caminho terminal quando o modelo novo é pior que o atual.
-- Enfatizar: o gate compara F1 do candidato contra o modelo em produção —
-  um retreino que piora o modelo nunca chega a produção sozinho.
-
-**Mostrar: Grafana com carga rodando (~30s)**
-- Dashboard "Triagem de Laudos Medicos", painel **"Latencia do modelo vs.
-  overhead HTTP"** — apontar que ele separa o tempo de inferência (dentro do
-  processo) do tempo de HTTP ponta a ponta (rede + ASGI), porque são coisas
-  diferentes e a otimização de latência (Result) atacou a primeira.
-
----
-
-## Result — 3:30–4:45
-
-**Falar — o número principal (~20s):**
-- ONNX Runtime entrega **3,29x** de ganho no p50 (0,570 ms → 0,173 ms) na
-  troca de sklearn puro para ONNX, **sem custo de acurácia**: F1-macro
-  praticamente igual, 0,5445 → 0,5427.
-
-**Mostrar:** tabela comparativa de `docs/benchmarks/comparativo-latencia.md`
-(sklearn / onnx-fp32 / onnx-int8, colunas p50/p95/p99/F1/tamanho).
-
-**Falar — as lições aprendidas (isto é o que o método STAR realmente
-cobra, e é o material mais forte do projeto — não apressar):**
-
-1. **A quantização dinâmica int8 não deu ganho nenhum**, e o grafo ONNX
-   explica por quê: `quantize_dynamic` reescreve nós `MatMul`/`Gemm`, mas o
-   `skl2onnx` exporta o classificador como um `LinearClassifier` do
-   `ai.onnx.ml` — um operador que a quantização dinâmica nunca toca.
-   Profiling mostrou também que 73% do tempo de inferência é tokenização e
-   só 27% é o classificador, então o teto de ganho possível já era baixo
-   antes mesmo de tentar.
-
-2. **Unigramas venceram bigramas nos dois eixos ao mesmo tempo** — mais
-   rápido (0,786 ms → 0,614 ms) **e** mais preciso (F1 0,5445 → 0,5589).
-   Contraintuitivo (mais contexto geralmente ajuda), e foi descoberto
-   medindo, não advinhando.
-
-3. **A regra de segurança pegou um erro real do modelo.** Voltar ao exemplo
-   do Action: aquele mesmo laudo cardiovascular clássico (dor no peito, ST
-   elevation) foi classificado pelo modelo como `general pathological
-   conditions` — categoria de baixa prioridade — com confiança de apenas
-   0,3993, abaixo do limiar de 0,40. Por isso o sistema não deixou passar
-   como NORMAL: escalou para `ATENCAO` e marcou `revisao_humana: true`. É o
-   design de custo assimétrico do Situation funcionando na prática, sobre um
-   caso real — a coisa mais forte para mostrar no vídeo inteiro.
-
-**Mostrar na tela:** tabela comparativa de latência; se der tempo, voltar
-1s ao JSON do `/predict` do Action para reforçar visualmente o ponto 3.
-
----
-
-## Fecho — 4:45–5:00
+### 3. GitHub Actions verde — 2:10–2:35 (25s, corte prioridade 2, ~13 palavras — só se repositório publicado)
 
 **Falar:**
-- Próximo passo natural do projeto: monitorar *drift* de dados/modelo ao
-  longo do tempo, usando o histograma de confiança das predições que já
-  está instrumentado no Grafana — não precisa de nada novo para começar,
-  só olhar a métrica que já existe.
+- "Quatro jobs: lint, test, build com smoke test do predict, e validate-dag."
+
+**Mostrar:** aba Actions, os 4 jobs verdes (`lint`, `test`, `build`,
+`validate-dag`).
+
+### 4. Airflow — DAG e gate de promoção — 2:35–3:10 (35s, corte prioridade 3, ~30 palavras)
+
+**Falar:**
+- "Sete tasks: ingerir, validar, treinar, avaliar — e o gate: só promove se
+  o candidato for igual ou melhor que o atual; senão, rejeitar_candidato
+  encerra o pipeline sem quebrar nada."
+
+**Mostrar:** `http://localhost:8080`, DAG `retreino_triagem`, grafo das 7
+tasks.
+
+### 5. Grafana com carga rodando — 3:10–3:30 (20s, corte prioridade 4, ~18 palavras)
+
+**Falar:**
+- "Este painel separa inferência de HTTP — a otimização do Result atacou a
+  inferência, não a rede."
+
+**Mostrar:** dashboard "Triagem de Laudos Medicos", painel **"Latencia do
+modelo vs. overhead HTTP"**.
+
+**Total de palavras faladas no bloco Action: ~103** (bem abaixo do teto de
+~300 para 130s a 140 ppm — de propósito, porque a demonstração ao vivo já
+ocupa o tempo visualmente).
+
+---
+
+## Result — 3:30–4:45 (75s — 4 sub-segmentos, somam exatamente 75s, ~175 palavras)
+
+As três lições aprendidas abaixo são o material mais forte do projeto — é
+literalmente o que o método STAR pede em "Result", e não devem ser
+cortadas. Se algo tiver que ceder tempo no dia da gravação, ceda no Action
+(ver prioridades de corte acima), nunca aqui.
+
+| # | Sub-segmento | Janela | Duração |
+|---|---|---|---|
+| 1 | Número principal (ONNX 3,29x) | 3:30–3:45 | 15s |
+| 2 | Lição 1 — quantização sem ganho | 3:45–4:10 | 25s |
+| 3 | Lição 2 — unigramas venceram bigramas | 4:10–4:25 | 15s |
+| 4 | Lição 3 — a regra de segurança pegou um erro real | 4:25–4:45 | 20s |
+
+Soma: 15 + 25 + 15 + 20 = **75s = 1:15** ✓
+
+### 1. Número principal — 3:30–3:45 (15s, ~30 palavras)
+
+**Falar:**
+- "ONNX Runtime entrega 3,29 vezes de ganho no p50, de 0,570 para 0,173
+  milissegundos, na troca de sklearn puro para ONNX — sem custo de
+  acurácia: F1 praticamente igual, 0,5445 para 0,5427."
+
+**Mostrar:** tabela comparativa de `docs/benchmarks/comparativo-latencia.md`.
+
+### 2. Lição 1 — quantização sem ganho — 3:45–4:10 (25s, ~55 palavras)
+
+**Falar:**
+- "Primeira lição: quantização int8 não deu ganho nenhum. O grafo explica
+  por quê — o classificador vira um LinearClassifier do ai.onnx.ml, que a
+  quantização dinâmica nunca toca, ela só reescreve MatMul e Gemm. E
+  profiling mostrou que 73% do tempo é tokenização, só 27% é o
+  classificador — o teto de ganho já era baixo."
+
+**Mostrar:** contagem de operadores do grafo ONNX (fp32 vs. int8,
+idênticos).
+
+### 3. Lição 2 — unigramas venceram bigramas — 4:10–4:25 (15s, ~35 palavras)
+
+**Falar:**
+- "Segunda lição, contraintuitiva: unigramas venceram bigramas nos dois
+  eixos ao mesmo tempo — mais rápido, 0,786 para 0,614 milissegundos, e
+  mais preciso, F1 de 0,5445 para 0,5589. Isso veio de medir, não de
+  advinhar."
+
+**Mostrar:** tabela comparativa de latência (mesma da etapa 1).
+
+### 4. Lição 3 — a regra de segurança pegou um erro real — 4:25–4:45 (20s, ~55 palavras)
+
+**Falar:**
+- "Terceira lição, a mais forte: aquele mesmo laudo cardiovascular do Action
+  foi classificado como condição de baixa prioridade, com confiança de
+  apenas 0,3993 — abaixo do limiar de 0,40. Por isso o sistema não deixou
+  passar como normal: escalou para atenção e marcou revisão humana. É o
+  custo assimétrico do Situation funcionando, ao vivo, num caso real."
+
+**Mostrar:** voltar 1s ao JSON do `/predict` do Action, apontando
+`prioridade: ATENCAO` e `revisao_humana: true`.
+
+**Total de palavras faladas no bloco Result: ~175** (dentro do teto de
+~175 para 75s a 140 ppm).
+
+---
+
+## Fecho — 4:45–5:00 (15s, ~30 palavras)
+
+**Falar:**
+- "Próximo passo natural: monitorar drift de dados e do modelo ao longo do
+  tempo, usando o histograma de confiança das predições que já está
+  instrumentado no Grafana — não precisa de nada novo para começar."
 
 **Mostrar na tela:** painel "Confianca das predicoes (p10 / p50) e
 requisicoes em voo" do dashboard.
 
 ---
 
-## Referência rápida de tempo
+## Referência rápida de tempo e palavras
 
-| Bloco | Janela | Duração |
-|---|---|---|
-| Situation | 0:00–0:45 | 45s |
-| Task | 0:45–1:20 | 35s |
-| Action | 1:20–3:30 | 2:10 |
-| Result | 3:30–4:45 | 1:15 |
-| Fecho | 4:45–5:00 | 15s |
-| **Total** | | **5:00** |
+| Bloco | Janela | Duração | Palavras (~140 ppm) | Teto a 140 ppm |
+|---|---|---|---|---|
+| Situation | 0:00–0:45 | 45s | ~85 | ~105 |
+| Task | 0:45–1:20 | 35s | ~55 | ~82 |
+| Action | 1:20–3:30 | 2:10 (130s) | ~103 | ~303 (deliberadamente sub-usado — demo ao vivo) |
+| Result | 3:30–4:45 | 1:15 (75s) | ~175 | ~175 |
+| Fecho | 4:45–5:00 | 15s | ~30 | ~35 |
+| **Total** | | **5:00** | **~448** | |
+
+Todos os blocos somam exatamente 5:00 no nível superior, e agora cada bloco
+também soma exatamente sua própria janela no nível dos sub-segmentos (ver
+tabelas de Action e Result acima) — a aritmética não depende mais de
+compensação entre blocos.
