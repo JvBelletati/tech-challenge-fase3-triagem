@@ -22,7 +22,7 @@ EXPECTED_TASKS = {
 
 @pytest.fixture(scope="module")
 def dagbag():
-    return DagBag("airflow/dags", include_examples=False)
+    return DagBag("airflow/dags")
 
 
 def test_dag_imports_without_errors(dagbag):

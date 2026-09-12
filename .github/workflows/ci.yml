@@ -99,7 +99,7 @@ jobs:
         run: |
           python - <<'PY'
           from airflow.models import DagBag
-          bag = DagBag("airflow/dags", include_examples=False)
+          bag = DagBag("airflow/dags")
           if bag.import_errors:
               for path, error in bag.import_errors.items():
                   print(f"ERRO em {path}:\n{error}")
