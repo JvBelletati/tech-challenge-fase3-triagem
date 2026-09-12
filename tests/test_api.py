@@ -1,5 +1,6 @@
 import pytest
 from fastapi.testclient import TestClient
+from prometheus_client import REGISTRY
 
 from triagem.api import metrics
 from triagem.api.main import app
@@ -63,11 +64,20 @@ def test_predict_validation_error_counts_as_error_metric(client):
     """A malformed request must still 422 with the usual body, but now also
     counts toward triagem_errors_total{tipo="validacao"} and
     triagem_requests_total{status="error"} so the error-rate panel has a
-    real numerator."""
+    real numerator. It must NOT add an observation to
+    triagem_request_duration_seconds: the request never reached the model,
+    so it has no service latency worth reporting, and feeding the latency
+    histogram an invented zero would drag the p50/p95/p99 panel down."""
     errors_before = metrics.ERRORS.labels(tipo="validacao")._value.get()
     requests_before = metrics.REQUESTS.labels(
         endpoint="/predict", status="error", categoria="none"
     )._value.get()
+    duration_count_before = (
+        REGISTRY.get_sample_value(
+            "triagem_request_duration_seconds_count", {"endpoint": "/predict"}
+        )
+        or 0.0
+    )
 
     response = client.post("/predict", json={"texto": "dor"})
 
@@ -80,8 +90,12 @@ def test_predict_validation_error_counts_as_error_metric(client):
     requests_after = metrics.REQUESTS.labels(
         endpoint="/predict", status="error", categoria="none"
     )._value.get()
+    duration_count_after = REGISTRY.get_sample_value(
+        "triagem_request_duration_seconds_count", {"endpoint": "/predict"}
+    )
     assert errors_after == errors_before + 1
     assert requests_after == requests_before + 1
+    assert duration_count_after == duration_count_before
 
 
 @needs_model

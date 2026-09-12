@@ -63,7 +63,8 @@ def main() -> None:
     args = parser.parse_args()
 
     interval = 1.0 / args.rps
-    deadline = time.time() + args.duration
+    started = time.time()
+    deadline = started + args.duration
     sent = 0
     statuses: dict[int, int] = {}
 
@@ -77,7 +78,16 @@ def main() -> None:
             print(f"  {sent} requisicoes | {statuses}")
         time.sleep(interval)
 
-    print(f"total: {sent} requisicoes | distribuicao de status: {statuses}")
+    # --rps is a ceiling, not a target: send() blocks on the real round-trip
+    # and the sleep(interval) below never accounts for that time, so the
+    # achieved rate is always <= --rps. Report what actually happened instead
+    # of letting the flag imply a rate nobody re-running this will get.
+    elapsed = time.time() - started
+    achieved_rps = sent / elapsed if elapsed > 0 else 0.0
+    print(
+        f"total: {sent} requisicoes em {elapsed:.1f}s ({achieved_rps:.2f} req/s alcancado) "
+        f"| distribuicao de status: {statuses}"
+    )
 
 
 if __name__ == "__main__":

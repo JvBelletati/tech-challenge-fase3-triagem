@@ -79,7 +79,21 @@ def observe_prediction(prediction: Prediction, http_seconds: float) -> None:
     CONFIDENCE.observe(prediction.confidence)
 
 
-def observe_error(error_type: str, http_seconds: float) -> None:
+def observe_error(error_type: str, http_seconds: float | None, endpoint: str = "/predict") -> None:
+    """Record one failed request.
+
+    `http_seconds` is `None` when the request never reached a handler body -
+    e.g. one rejected by Pydantic validation before `/predict` runs. That
+    request has no service latency worth reporting, so we skip the duration
+    histogram rather than feed it an invented zero that would drag the
+    p50/p95/p99 latency panel toward zero. The request and error counters
+    still need the observation regardless: that is what the error-rate panel
+    counts. `endpoint` defaults to "/predict" so existing call sites (which
+    only ever fail on that route today) keep working unchanged; pass the
+    actual path explicitly from handlers, like the validation one, that can
+    fire on any route.
+    """
     ERRORS.labels(tipo=error_type).inc()
-    REQUESTS.labels(endpoint="/predict", status="error", categoria="none").inc()
-    REQUEST_DURATION.labels(endpoint="/predict").observe(http_seconds)
+    REQUESTS.labels(endpoint=endpoint, status="error", categoria="none").inc()
+    if http_seconds is not None:
+        REQUEST_DURATION.labels(endpoint=endpoint).observe(http_seconds)

@@ -54,9 +54,7 @@ app = FastAPI(
 
 
 @app.exception_handler(RequestValidationError)
-async def handle_validation_error(
-    request: Request, exc: RequestValidationError
-) -> Response:
+async def handle_validation_error(request: Request, exc: RequestValidationError) -> Response:
     """Count malformed requests as errors without changing FastAPI's 422 body.
 
     A too-short or missing `texto` fails Pydantic validation before the
@@ -66,7 +64,7 @@ async def handle_validation_error(
     keeps this class of failure distinguishable in triagem_errors_total from
     genuine inference or model-availability errors.
     """
-    metrics.observe_error("validacao", 0.0)
+    metrics.observe_error("validacao", None, endpoint=request.url.path)
     return await request_validation_exception_handler(request, exc)
 
 
@@ -86,7 +84,7 @@ def health(response: Response) -> HealthResponse:
 def predict(request: PredictRequest) -> PredictResponse:
     predictor = get_predictor()
     if predictor is None:
-        metrics.observe_error("modelo_indisponivel", 0.0)
+        metrics.observe_error("modelo_indisponivel", None)
         raise HTTPException(status_code=503, detail="modelo indisponivel")
 
     started = time.perf_counter()

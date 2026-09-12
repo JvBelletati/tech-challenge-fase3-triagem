@@ -136,6 +136,21 @@
           "refId": "C"
         }
       ]
+    },
+    {
+      "id": 7,
+      "type": "timeseries",
+      "title": "Erros por tipo",
+      "description": "Quebra de triagem_errors_total por tipo (validacao, inferencia, modelo_indisponivel). Mostra nao so que ha erros, mas por que.",
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 24 },
+      "fieldConfig": { "defaults": { "unit": "reqps" }, "overrides": [] },
+      "targets": [
+        {
+          "expr": "sum by (tipo) (rate(triagem_errors_total[5m]))",
+          "legendFormat": "{{tipo}}",
+          "refId": "A"
+        }
+      ]
     }
   ]
 }
