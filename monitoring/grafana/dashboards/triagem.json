@@ -1,0 +1,141 @@
+{
+  "uid": "triagem-main",
+  "title": "Triagem de Laudos Medicos",
+  "tags": ["triagem", "mlops"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "5s",
+  "time": { "from": "now-15m", "to": "now" },
+  "panels": [
+    {
+      "id": 1,
+      "type": "timeseries",
+      "title": "Throughput (requisicoes por segundo)",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "fieldConfig": { "defaults": { "unit": "reqps" }, "overrides": [] },
+      "targets": [
+        {
+          "expr": "sum(rate(triagem_requests_total[1m]))",
+          "legendFormat": "total",
+          "refId": "A"
+        },
+        {
+          "expr": "sum by (categoria) (rate(triagem_requests_total{categoria!=\"none\"}[1m]))",
+          "legendFormat": "{{categoria}}",
+          "refId": "B"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "type": "timeseries",
+      "title": "Latencia HTTP ponta a ponta (p50 / p95 / p99)",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "fieldConfig": { "defaults": { "unit": "s" }, "overrides": [] },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.50, sum(rate(triagem_request_duration_seconds_bucket[1m])) by (le))",
+          "legendFormat": "p50",
+          "refId": "A"
+        },
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(triagem_request_duration_seconds_bucket[1m])) by (le))",
+          "legendFormat": "p95",
+          "refId": "B"
+        },
+        {
+          "expr": "histogram_quantile(0.99, sum(rate(triagem_request_duration_seconds_bucket[1m])) by (le))",
+          "legendFormat": "p99",
+          "refId": "C"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "type": "timeseries",
+      "title": "Latencia do modelo vs. overhead HTTP",
+      "description": "Inferencia pura isolada do custo do framework. A distancia entre as duas linhas e o overhead do servidor.",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "fieldConfig": { "defaults": { "unit": "s" }, "overrides": [] },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(triagem_inference_duration_seconds_bucket[1m])) by (le))",
+          "legendFormat": "inferencia p95",
+          "refId": "A"
+        },
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(triagem_request_duration_seconds_bucket[1m])) by (le))",
+          "legendFormat": "HTTP total p95",
+          "refId": "B"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "Taxa de erro (%)",
+      "gridPos": { "h": 8, "w": 6, "x": 12, "y": 8 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "orange", "value": 1 },
+              { "color": "red", "value": 5 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "100 * sum(rate(triagem_requests_total{status=\"error\"}[5m])) / clamp_min(sum(rate(triagem_requests_total[5m])), 0.001)",
+          "legendFormat": "erro",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "type": "piechart",
+      "title": "Distribuicao de categorias preditas",
+      "gridPos": { "h": 8, "w": 6, "x": 18, "y": 8 },
+      "fieldConfig": { "defaults": {}, "overrides": [] },
+      "targets": [
+        {
+          "expr": "sum by (categoria) (increase(triagem_requests_total{categoria!=\"none\"}[15m]))",
+          "legendFormat": "{{categoria}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "type": "timeseries",
+      "title": "Confianca das predicoes (p10 / p50) e requisicoes em voo",
+      "description": "Queda sustentada na confianca e o sinal precoce de data drift.",
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 16 },
+      "fieldConfig": { "defaults": {}, "overrides": [] },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.10, sum(rate(triagem_prediction_confidence_bucket[5m])) by (le))",
+          "legendFormat": "confianca p10",
+          "refId": "A"
+        },
+        {
+          "expr": "histogram_quantile(0.50, sum(rate(triagem_prediction_confidence_bucket[5m])) by (le))",
+          "legendFormat": "confianca p50",
+          "refId": "B"
+        },
+        {
+          "expr": "triagem_requests_in_progress",
+          "legendFormat": "em processamento",
+          "refId": "C"
+        }
+      ]
+    }
+  ]
+}

@@ -7,7 +7,9 @@ import os
 import time
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, HTTPException, Response
+from fastapi import FastAPI, HTTPException, Request, Response
+from fastapi.exception_handlers import request_validation_exception_handler
+from fastapi.exceptions import RequestValidationError
 from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
 
 from triagem.api import metrics
@@ -49,6 +51,23 @@ app = FastAPI(
     version="1.0.0",
     lifespan=lifespan,
 )
+
+
+@app.exception_handler(RequestValidationError)
+async def handle_validation_error(
+    request: Request, exc: RequestValidationError
+) -> Response:
+    """Count malformed requests as errors without changing FastAPI's 422 body.
+
+    A too-short or missing `texto` fails Pydantic validation before the
+    `/predict` handler body ever runs, so without this hook the error-rate
+    panel's numerator (triagem_requests_total{status="error"}) would never
+    move no matter how many malformed reports arrive. `tipo="validacao"`
+    keeps this class of failure distinguishable in triagem_errors_total from
+    genuine inference or model-availability errors.
+    """
+    metrics.observe_error("validacao", 0.0)
+    return await request_validation_exception_handler(request, exc)
 
 
 @app.get("/health", response_model=HealthResponse)
