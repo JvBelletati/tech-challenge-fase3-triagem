@@ -44,8 +44,10 @@ def main() -> None:
         X, y, test_size=TEST_SIZE, random_state=RANDOM_STATE, stratify=y
     )
     # Take the first args.samples rows from the held-out test set
-    texts = X_test[: args.samples].tolist()
-    labels = y_test[: args.samples].tolist()
+    n_holdout = len(X_test)
+    n_used = min(args.samples, n_holdout)
+    texts = X_test[:n_used].tolist()
+    labels = y_test[:n_used].tolist()
 
     results = benchmark_variants(CURRENT_MODEL_DIR, texts, labels, rounds=args.rounds)
     graph_ops = {
@@ -54,15 +56,32 @@ def main() -> None:
     }
 
     table = format_report(results, graph_ops)
+    if n_used >= n_holdout:
+        # Covers every row of the held-out split, exactly what training/evaluation
+        # scored to produce metadata.json - so the two numbers must reconcile.
+        f1_note = (
+            f"**F1-macro medido nas {n_used} linhas completas do conjunto de testes "
+            f"retido (held-out test set)** para evitar vazamento de dados. Por cobrir "
+            f"o held-out inteiro, os valores de sklearn desta tabela reconciliam "
+            f"exatamente com `metadata.json` (mesmo split, mesmas linhas)."
+        )
+    else:
+        # A partial slice of the held-out set: still leakage-free, but not the same
+        # population metadata.json was scored on, so the numbers will not match it.
+        f1_note = (
+            f"**F1-macro medido num recorte parcial de {n_used} das {n_holdout} linhas "
+            f"do conjunto de testes retido (held-out test set)** — evita vazamento de "
+            f"dados, mas por não cobrir o held-out inteiro (rode com `--samples "
+            f"{n_holdout}` para isso) este valor **não** deve ser comparado diretamente "
+            f"com `metadata.json`."
+        )
     output = Path(PROJECT_ROOT) / "docs" / "benchmarks" / "comparativo-latencia.md"
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(
         f"# Comparativo de latencia — Etapa 4\n\n"
         f"Medido em {date.today().isoformat()} | {args.rounds} inferencias por variante | "
         f"uma requisicao por vez, CPU, `intra_op_num_threads=1`.\n\n"
-        f"**F1-macro medido no conjunto de testes retido (held-out test set)** "
-        f"para evitar vazamento de dados e garantir que os valores sejam comparáveis com "
-        f"`metadata.json`.\n\n{table}\n",
+        f"{f1_note}\n\n{table}\n",
         encoding="utf-8",
     )
     print(table)
