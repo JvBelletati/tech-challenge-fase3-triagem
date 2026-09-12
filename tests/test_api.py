@@ -1,10 +1,13 @@
+import asyncio
+
 import pytest
 from fastapi.testclient import TestClient
 from prometheus_client import REGISTRY
 
-from triagem.api import metrics
+from triagem.api import main, metrics
 from triagem.api.main import app
 from triagem.config import CURRENT_MODEL_DIR
+from triagem.inference.predictor import ModelNotFoundError
 
 needs_model = pytest.mark.skipif(
     not (CURRENT_MODEL_DIR / "model.onnx").exists(),
@@ -105,3 +108,106 @@ def test_metrics_endpoint_exposes_prometheus_format(client):
     assert response.status_code == 200
     assert "triagem_requests_total" in response.text
     assert "triagem_inference_duration_seconds" in response.text
+
+
+# --- Degraded mode: no model loaded --------------------------------------
+#
+# main.lifespan catches ModelNotFoundError at startup and leaves
+# `_predictor` as None instead of letting the app crash - "a container that
+# refuses to boot tells an orchestrator nothing useful" (see the comment in
+# main.py). The tests below reproduce exactly that post-boot-failure state
+# by monkeypatching the module-level `_predictor` global directly, which is
+# the same state main.lifespan would leave behind if Predictor() raised
+# ModelNotFoundError (e.g. an empty TRIAGEM_MODELS_DIR). They run
+# unconditionally - unlike the @needs_model tests above, they must pass
+# whether or not a real model is present in models/current/, and they run
+# independently of whichever model `client` already loaded: monkeypatch
+# restores `_predictor` to its previous value after each test, so nothing
+# leaks into other tests in this module.
+
+
+def test_lifespan_survives_a_missing_model_at_startup(monkeypatch):
+    """Directly exercises main.lifespan's `except ModelNotFoundError` branch:
+    startup must not raise when no model artifact exists - it logs and
+    leaves `_predictor` as None so /health and /predict can report the
+    failure instead of the process refusing to boot (see the comment in
+    main.py). This drives `lifespan` directly rather than opening a second
+    TestClient on the shared `app` singleton, and manually restores
+    `_predictor` afterwards, so it cannot clobber the model the
+    module-scoped `client` fixture already loaded for the other tests in
+    this module."""
+
+    class _AlwaysMissing:
+        def __init__(self, *args, **kwargs):
+            raise ModelNotFoundError("simulated: no model artifact for this test")
+
+    monkeypatch.setattr(main, "Predictor", _AlwaysMissing)
+    original_predictor = main._predictor
+
+    async def _boot_and_check() -> None:
+        async with main.lifespan(main.app):
+            assert main.get_predictor() is None
+
+    try:
+        asyncio.run(_boot_and_check())
+    finally:
+        main._predictor = original_predictor
+
+
+def test_predict_returns_503_when_no_model_is_loaded(client, monkeypatch):
+    monkeypatch.setattr(main, "_predictor", None)
+
+    response = client.post("/predict", json={"texto": LAUDO})
+
+    assert response.status_code == 503
+    assert response.json()["detail"] == "modelo indisponivel"
+
+
+def test_health_returns_503_when_no_model_is_loaded(client, monkeypatch):
+    monkeypatch.setattr(main, "_predictor", None)
+
+    response = client.get("/health")
+
+    assert response.status_code == 503
+    body = response.json()
+    assert body["status"] == "modelo indisponivel"
+    assert body["modelo"] is None
+
+
+# --- Degraded mode: inference failure -------------------------------------
+
+
+class _FailingPredictor:
+    """Stands in for a loaded Predictor whose ONNX session errors mid-request."""
+
+    version = "test-version"
+    runtime = "onnx"
+
+    def predict(self, texto: str):
+        raise RuntimeError("simulated inference failure")
+
+
+def test_predict_failure_returns_500_and_counts_as_inference_error(client, monkeypatch):
+    """Exercises /predict's except branch: an inference exception must become
+    a generic 500 (never leaking exception internals to the client) and must
+    increment triagem_errors_total{tipo="inferencia"} - the metric the
+    Grafana 'Erros por tipo' panel exists to display. Unlike the validation-
+    error counterpart above, this failure happens after work started, so it
+    also must be excluded from the success-path metrics (observe_prediction
+    is never called)."""
+    monkeypatch.setattr(main, "_predictor", _FailingPredictor())
+
+    errors_before = metrics.ERRORS.labels(tipo="inferencia")._value.get()
+    confidence_count_before = (
+        REGISTRY.get_sample_value("triagem_prediction_confidence_count") or 0.0
+    )
+
+    response = client.post("/predict", json={"texto": LAUDO})
+
+    assert response.status_code == 500
+    assert response.json()["detail"] == "falha na inferencia"
+
+    errors_after = metrics.ERRORS.labels(tipo="inferencia")._value.get()
+    confidence_count_after = REGISTRY.get_sample_value("triagem_prediction_confidence_count") or 0.0
+    assert errors_after == errors_before + 1
+    assert confidence_count_after == confidence_count_before

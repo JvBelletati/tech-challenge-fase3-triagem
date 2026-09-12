@@ -76,11 +76,22 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
           cache: pip
-      - name: Install Airflow with official constraints
+      - name: Install project, then Airflow with its official constraints
         run: |
+          # Order matters: the Airflow 3.3.1 constraints file pins fastapi to a
+          # version older than what `pip install -e .` would otherwise pull in.
+          # Installing the project FIRST and Airflow SECOND (with --constraint)
+          # lets Airflow's constrained resolution win; the reverse order lets
+          # `pip install -e .` upgrade fastapi to 0.141.1 after Airflow is in
+          # place, which is exactly the conflict airflow/Dockerfile documents
+          # as breaking Airflow 3.3.1.
+          # [training] is required here too: the DAG module imports
+          # triagem.training.export at module load time, which imports onnx
+          # and skl2onnx - without this extra, DagBag fails to import the DAG
+          # at all. [dev] brings in pytest for the step below.
+          pip install -e ".[training,dev]"
           pip install "apache-airflow==3.3.1" \
             --constraint "https://raw.githubusercontent.com/apache/airflow/constraints-3.3.1/constraints-${{ env.PYTHON_VERSION }}.txt"
-          pip install -e .
       - name: Import the DAG
         env:
           AIRFLOW__CORE__DAGS_FOLDER: ${{ github.workspace }}/airflow/dags
@@ -96,3 +107,8 @@ jobs:
           print("DAGs carregadas:", sorted(bag.dag_ids))
           assert "retreino_triagem" in bag.dag_ids
           PY
+      - name: Run DAG-structure tests
+        env:
+          AIRFLOW__CORE__DAGS_FOLDER: ${{ github.workspace }}/airflow/dags
+          AIRFLOW__CORE__LOAD_EXAMPLES: "False"
+        run: pytest tests/test_dag.py -v
